@@ -1,5 +1,6 @@
 const dotenv = require('dotenv');
 dotenv.config();
+const upload = require('./cloudinaryConfig');
 const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const express = require('express');
@@ -68,14 +69,18 @@ app.post('/api/login', async (req, res) => {
 })
 
 // For user profile update
-app.put('/api/users/:id', async (req, res) => {
+app.put('/api/users/:id', upload.single('avatar'), async (req, res) => {
   try {
     const userId = req.params.id;
     const updates = {};
 
     if (req.body.username !== undefined) updates.username = req.body.username;
     if (req.body.email !== undefined)    updates.email = req.body.email;
-    if (req.body.avatar !== undefined)   updates.avatar = req.body.avatar;
+    
+    // If a file was uploaded, Multer & Cloudinary populate req.file.path with the secure URL
+    if (req.file) {
+      updates.avatar = req.file.path; 
+    }
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ message: 'No fields provided for update' });
@@ -87,25 +92,18 @@ app.put('/api/users/:id', async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
     res.status(200).json({
       message: 'Profile updated successfully!',
-      user: {
-        id: updatedUser._id,
-        username: updatedUser.username,
-        email: updatedUser.email,
-        avatar: updatedUser.avatar,
-      }
+      user: updatedUser
     });
-
   } catch (error) {
+    console.error("FULL ERROR DETECTED:", error);
+    
     if (error.code === 11000) {
       return res.status(400).json({ error: 'Username or Email is already taken' });
     }
-    res.status(500).json({ error: error.message });
+    // Return the whole error object to Postman instead of just error.message
+    res.status(500).json({ error: error, message: error.message });
   }
 });
 
@@ -114,7 +112,7 @@ app.get('/api/posts', async (req, res) => {
     try {
         const posts = await Post.find()
             .populate('author', 'username avatar')
-            .sort({ timestamps: -1 });
+            .sort({ createdAt: -1 });
         res.status(200).json(posts);
     } catch (error) {
         res.status(500).json({ error: error.message });
