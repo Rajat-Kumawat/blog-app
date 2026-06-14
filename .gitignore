@@ -1,0 +1,12 @@
+# ROOT .gitignore
+
+# Backend ignores
+Backend/node_modules/
+Backend/.env
+Backend/cloudinaryConfig.js
+
+# Frontend ignores (ready for when you start building)
+Frontend/node_modules/
+Frontend/.env
+Frontend/dist/
+Frontend/.next/
